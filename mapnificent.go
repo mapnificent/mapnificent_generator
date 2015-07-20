@@ -8,7 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/nicolaspaton/gogtfs"
-	"github.com/stefanw/mapnificent/mapnificent.pb"
+	"github.com/mapnificent/mapnificent_generator/mapnificent.pb"
 	"io"
 	"log"
 	"os"

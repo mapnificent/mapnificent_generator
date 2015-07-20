@@ -1,0 +1,32 @@
+package mapnificent;
+
+message MapnificentNetwork {
+  required string Cityid = 1;
+
+  message Stop {
+    required double Latitude = 1;
+    required double Longitude = 2;
+
+    message TravelOption {
+      required int32 Stop = 1;
+      optional int32 TravelTime = 2;
+      optional int32 StayTime = 3;
+      optional string Line = 4;
+      optional int32 WalkTime = 5;
+    }
+    repeated TravelOption TravelOptions = 3;
+  }
+  repeated Stop Stops = 2;
+
+  message Line {
+    required string LineId = 1;
+    message LineTime {
+      required int32 Interval = 1;
+      required int32 Start = 2;
+      optional int32 Stop = 3;
+      optional int32 Weekday = 4;
+    }
+    repeated LineTime LineTimes = 2;
+  }
+  repeated Line Lines = 3;
+}

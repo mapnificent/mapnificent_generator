@@ -1,19 +1,19 @@
 package main
 
 import (
-	// "encoding/json"
-	"code.google.com/p/goprotobuf/proto"
 	"container/list"
 	"crypto/md5"
 	"flag"
 	"fmt"
-	"github.com/nicolaspaton/gogtfs"
-	"github.com/mapnificent/mapnificent_generator/mapnificent.pb"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/mapnificent/mapnificent_generator/mapnificent.pb"
+	"github.com/nicolaspaton/gogtfs"
 )
 
 var (

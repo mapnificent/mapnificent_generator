@@ -21,23 +21,14 @@ var (
 	outputFile  = flag.String("o", "", "Output file")
 	shouldLog   = flag.Bool("v", false, "Log to Stdout/err")
 	needHelp    = flag.Bool("h", false, "Displays this help message...")
-	prefPath    string
-	homeDir     string
 	feeds       map[string]*gtfs.Feed
 )
 
 func init() {
-	homeDir = os.Getenv("HOME")
-	flag.StringVar(&prefPath, "p", homeDir+"/.gtfs", "Preference file path")
 	feeds = make(map[string]*gtfs.Feed, 10)
 }
 
-type Preferences struct {
-	Paths []string
-}
 
-func (p *Preferences) saveToDisk() {
-}
 
 func discoverGtfsPaths(path string) (results []string) {
 	log.Println("discoverGtfsPaths: " + path)

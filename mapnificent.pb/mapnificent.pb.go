@@ -89,7 +89,7 @@ type MapnificentNetwork_Stop_TravelOption struct {
 	TravelTime       *int32  `protobuf:"varint,2,opt" json:"TravelTime,omitempty"`
 	StayTime         *int32  `protobuf:"varint,3,opt" json:"StayTime,omitempty"`
 	Line             *string `protobuf:"bytes,4,opt" json:"Line,omitempty"`
-	WalkTime         *int32  `protobuf:"varint,5,opt" json:"WalkTime,omitempty"`
+	WalkDistance     *int32  `protobuf:"varint,5,opt" json:"WalkDistance,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -125,9 +125,9 @@ func (m *MapnificentNetwork_Stop_TravelOption) GetLine() string {
 	return ""
 }
 
-func (m *MapnificentNetwork_Stop_TravelOption) GetWalkTime() int32 {
-	if m != nil && m.WalkTime != nil {
-		return *m.WalkTime
+func (m *MapnificentNetwork_Stop_TravelOption) GetWalkDistance() int32 {
+	if m != nil && m.WalkDistance != nil {
+		return *m.WalkDistance
 	}
 	return 0
 }

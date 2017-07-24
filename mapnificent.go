@@ -145,34 +145,37 @@ func GetNetwork(feeds map[string]*gtfs.Feed) *mapnificent.MapnificentNetwork {
 			var lastStop *mapnificent.MapnificentNetwork_Stop
 
 			for _, stoptime := range trip.StopTimes {
-				stopIndex := GetOrCreateMapnificentStop(feed, feedNr, stoptime.Stop, network, stationMap)
+				stopIndex := GetOrCreateMapnificentStop(feeds, feedNr, stoptime.Stop, network, stationMap)
 				mapnificentStop := network.Stops[stopIndex]
 
 				_, walkedOk := stopWalked[stopIndex]
 				if !walkedOk {
 					// Search 500 m radius
-					walkStopDistances := feed.StopCollection.StopDistancesByProximity(stoptime.Stop.Lat, stoptime.Stop.Lon, WALK_STATION_RADIUS)
-					sameStopWalked := make(map[uint]bool)
-					for _, walkStopDistance := range walkStopDistances {
-						if walkStopDistance.Stop.Id == stoptime.Stop.Id {
-							continue
-						}
+          for walkFeedPath, walkFeed := range feeds {
+  					walkStopDistances := walkFeed.StopCollection.StopDistancesByProximity(stoptime.Stop.Lat, stoptime.Stop.Lon, WALK_STATION_RADIUS)
+  					sameStopWalked := make(map[uint]bool)
+  					for _, walkStopDistance := range walkStopDistances {
+  						if walkFeedPath == path && walkStopDistance.Stop.Id == stoptime.Stop.Id {
+                // Same stop, continue
+  							continue
+  						}
 
-						walkStopIndex := GetOrCreateMapnificentStop(feed, feedNr, walkStopDistance.Stop, network, stationMap)
-						if walkStopIndex == stopIndex {
-							continue
-						}
-						_, sameStopWalkedOk := sameStopWalked[walkStopIndex]
-						if sameStopWalkedOk {
-							continue
-						}
-						sameStopWalked[walkStopIndex] = true
+  						walkStopIndex := GetOrCreateMapnificentStop(feeds, feedNr, walkStopDistance.Stop, network, stationMap)
+  						if walkStopIndex == stopIndex {
+  							continue
+  						}
+  						_, sameStopWalkedOk := sameStopWalked[walkStopIndex]
+  						if sameStopWalkedOk {
+  							continue
+  						}
+  						sameStopWalked[walkStopIndex] = true
 
-						walkTravelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
-						walkTravelOption.Stop = proto.Int32(int32(walkStopIndex))
-						walkTravelOption.WalkDistance = proto.Int32(int32(walkStopDistance.Distance))
-						mapnificentStop.TravelOptions = append(mapnificentStop.TravelOptions, walkTravelOption)
-					}
+  						walkTravelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
+  						walkTravelOption.Stop = proto.Int32(int32(walkStopIndex))
+  						walkTravelOption.WalkDistance = proto.Int32(int32(walkStopDistance.Distance))
+  						mapnificentStop.TravelOptions = append(mapnificentStop.TravelOptions, walkTravelOption)
+  					}
+          }
 					stopWalked[stopIndex] = true
 				}
 
@@ -199,22 +202,27 @@ func GetNetwork(feeds map[string]*gtfs.Feed) *mapnificent.MapnificentNetwork {
 	return network
 }
 
-func GetOrCreateMapnificentStop(feed *gtfs.Feed, feedNr int, stop *gtfs.Stop,
+func GetOrCreateMapnificentStop(feeds map[string]*gtfs.Feed, feedNr int, stop *gtfs.Stop,
 	network *mapnificent.MapnificentNetwork,
 	stationMap map[string]uint) uint {
 	stationName := fmt.Sprintf("%d_%s", feedNr, stop.Id)
 	stopIndex, ok := stationMap[stationName]
 	if !ok {
 		// Consider all stops in 50 meter radius as identical
-		nearbyStops := feed.StopCollection.StopsByProximity(stop.Lat, stop.Lon, IDENTICAL_STATION_RADIUS)
 		foundStopIndex := -1
-		for _, nearbyStop := range nearbyStops {
-			nearbyStopnName := fmt.Sprintf("%d_%s", feedNr, nearbyStop.Id)
-			nearbystopIndex, ok := stationMap[nearbyStopnName]
-			if ok {
-				foundStopIndex = int(nearbystopIndex)
-				break
-			}
+    for _, feed := range feeds {
+  		nearbyStops := feed.StopCollection.StopsByProximity(stop.Lat, stop.Lon, IDENTICAL_STATION_RADIUS)
+  		for _, nearbyStop := range nearbyStops {
+  			nearbyStopnName := fmt.Sprintf("%d_%s", feedNr, nearbyStop.Id)
+  			nearbystopIndex, ok := stationMap[nearbyStopnName]
+  			if ok {
+  				foundStopIndex = int(nearbystopIndex)
+  				break
+  			}
+      }
+      if foundStopIndex != -1 {
+        break
+      }
 		}
 		if foundStopIndex == -1 {
 			mapnificentStop := new(mapnificent.MapnificentNetwork_Stop)
@@ -492,6 +500,7 @@ func main() {
 					if err != nil {
 						log.Fatal(err)
 					} else {
+            feed.RoutingOnly = true
 						feed.Load()
 						feeds[path] = feed
 					}

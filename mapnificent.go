@@ -15,7 +15,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/mapnificent/mapnificent_generator/mapnificent.pb"
-	"github.com/nicolaspaton/gogtfs"
+	"github.com/mapnificent/gogtfs"
 )
 
 var (

@@ -32,8 +32,8 @@ func init() {
 
 const (
 	HOUR_RANGE               = int32(3)
-	IDENTICAL_STATION_RADIUS = 30
-	WALK_STATION_RADIUS      = 150
+	IDENTICAL_STATION_RADIUS = 100
+	WALK_STATION_RADIUS      = 350
 )
 
 func discoverGtfsPaths(path string) (results []string) {

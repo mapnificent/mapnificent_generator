@@ -21,7 +21,7 @@ var _ = proto.Marshal
 var _ = math.Inf
 
 type MapnificentNetwork struct {
-	Cityid           *string                    `protobuf:"bytes,1,req" json:"Cityid,omitempty"`
+	Cityid           *string                    `protobuf:"bytes,1,opt" json:"Cityid,omitempty"`
 	Stops            []*MapnificentNetwork_Stop `protobuf:"bytes,2,rep" json:"Stops,omitempty"`
 	Lines            []*MapnificentNetwork_Line `protobuf:"bytes,3,rep" json:"Lines,omitempty"`
 	XXX_unrecognized []byte                     `json:"-"`
@@ -53,9 +53,10 @@ func (m *MapnificentNetwork) GetLines() []*MapnificentNetwork_Line {
 }
 
 type MapnificentNetwork_Stop struct {
-	Latitude         *float64                                `protobuf:"fixed64,1,req" json:"Latitude,omitempty"`
-	Longitude        *float64                                `protobuf:"fixed64,2,req" json:"Longitude,omitempty"`
+	Latitude         *float64                                `protobuf:"fixed64,1,opt" json:"Latitude,omitempty"`
+	Longitude        *float64                                `protobuf:"fixed64,2,opt" json:"Longitude,omitempty"`
 	TravelOptions    []*MapnificentNetwork_Stop_TravelOption `protobuf:"bytes,3,rep" json:"TravelOptions,omitempty"`
+	Name             *string                                 `protobuf:"bytes,4,opt" json:"Name,omitempty"`
 	XXX_unrecognized []byte                                  `json:"-"`
 }
 
@@ -84,8 +85,15 @@ func (m *MapnificentNetwork_Stop) GetTravelOptions() []*MapnificentNetwork_Stop_
 	return nil
 }
 
+func (m *MapnificentNetwork_Stop) GetName() string {
+	if m != nil && m.Name != nil {
+		return *m.Name
+	}
+	return ""
+}
+
 type MapnificentNetwork_Stop_TravelOption struct {
-	Stop             *int32  `protobuf:"varint,1,req" json:"Stop,omitempty"`
+	Stop             *int32  `protobuf:"varint,1,opt" json:"Stop,omitempty"`
 	TravelTime       *int32  `protobuf:"varint,2,opt" json:"TravelTime,omitempty"`
 	StayTime         *int32  `protobuf:"varint,3,opt" json:"StayTime,omitempty"`
 	Line             *string `protobuf:"bytes,4,opt" json:"Line,omitempty"`
@@ -133,8 +141,9 @@ func (m *MapnificentNetwork_Stop_TravelOption) GetWalkDistance() int32 {
 }
 
 type MapnificentNetwork_Line struct {
-	LineId           *string                             `protobuf:"bytes,1,req" json:"LineId,omitempty"`
+	LineId           *string                             `protobuf:"bytes,1,opt" json:"LineId,omitempty"`
 	LineTimes        []*MapnificentNetwork_Line_LineTime `protobuf:"bytes,2,rep" json:"LineTimes,omitempty"`
+	Name             *string                             `protobuf:"bytes,3,opt" json:"Name,omitempty"`
 	XXX_unrecognized []byte                              `json:"-"`
 }
 
@@ -156,9 +165,16 @@ func (m *MapnificentNetwork_Line) GetLineTimes() []*MapnificentNetwork_Line_Line
 	return nil
 }
 
+func (m *MapnificentNetwork_Line) GetName() string {
+	if m != nil && m.Name != nil {
+		return *m.Name
+	}
+	return ""
+}
+
 type MapnificentNetwork_Line_LineTime struct {
-	Interval         *int32 `protobuf:"varint,1,req" json:"Interval,omitempty"`
-	Start            *int32 `protobuf:"varint,2,req" json:"Start,omitempty"`
+	Interval         *int32 `protobuf:"varint,1,opt" json:"Interval,omitempty"`
+	Start            *int32 `protobuf:"varint,2,opt" json:"Start,omitempty"`
 	Stop             *int32 `protobuf:"varint,3,opt" json:"Stop,omitempty"`
 	Weekday          *int32 `protobuf:"varint,4,opt" json:"Weekday,omitempty"`
 	XXX_unrecognized []byte `json:"-"`

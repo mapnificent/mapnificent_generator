@@ -1,6 +1,28 @@
-# Mapnificent Generator - alpha
+# Mapnificent Generator - Beta
 
-Issues:
- - Compute frequencies correctly
- - Protobuf improvements: weekday int32 or bytes?
- - ...
+This repo contains a Beta version of the Mapnificent Generator in Go. It takes GTFS feeds and converts them to Protocol Buffers that can be read by mapnificent.net.
+
+## Build distribution of the Mapnificent Generator
+
+	sh dist.sh
+
+## Download and update Mapnificent City automatically
+
+	export TRANSITFEED_API_KEY=<Your transitfeeds.com API Key>
+	scripts/download.py <path to mapnificent cities folder containing markdown file>
+
+
+## Development tasks
+
+### Run Generator directly on GTFS files in a directory
+
+	go run mapnificent.go -h
+	go run mapnificent.go -d <dir of GTFS files> -o <outputfile> -v
+
+	# Run with output containing extra debug info
+	go run mapnificent.go -d <dir of GTFS files> -o <outputfile> -v -e
+
+
+### Compile Protocol Buffer Definition to Go file
+
+    protoc -I=mapnificent.pb --go_out=mapnificent.pb mapnificent.pb/mapnificent.proto

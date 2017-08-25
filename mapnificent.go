@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"container/list"
 	"crypto/md5"
 	"encoding/hex"
@@ -11,11 +12,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/mapnificent/mapnificent_generator/mapnificent.pb"
 	"github.com/mapnificent/gogtfs"
+	"github.com/mapnificent/mapnificent_generator/mapnificent.pb"
 )
 
 var (
@@ -33,8 +36,8 @@ func init() {
 
 const (
 	HOUR_RANGE               = int32(3)
-	IDENTICAL_STATION_RADIUS = 100
-	WALK_STATION_RADIUS      = 350
+	IDENTICAL_STATION_RADIUS = 100.0
+	WALK_STATION_RADIUS      = 350.0
 )
 
 func discoverGtfsPaths(path string) (results []string) {
@@ -155,31 +158,32 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 				_, walkedOk := stopWalked[stopIndex]
 				if !walkedOk {
 					// Search 500 m radius
-          for walkFeedPath, walkFeed := range feeds {
-  					walkStopDistances := walkFeed.StopCollection.StopDistancesByProximity(stoptime.Stop.Lat, stoptime.Stop.Lon, WALK_STATION_RADIUS)
-  					sameStopWalked := make(map[uint]bool)
-  					for _, walkStopDistance := range walkStopDistances {
-  						if walkFeedPath == path && walkStopDistance.Stop.Id == stoptime.Stop.Id {
-                // Same stop, continue
-  							continue
-  						}
+					for walkFeedPath, walkFeed := range feeds {
+						walkStopDistances := walkFeed.StopCollection.StopDistancesByProximity(stoptime.Stop.Lat, stoptime.Stop.Lon, WALK_STATION_RADIUS)
+						sameStopWalked := make(map[uint]bool)
+						for _, walkStopDistance := range walkStopDistances {
+							if walkFeedPath == path && walkStopDistance.Stop.Id == stoptime.Stop.Id {
+								// Same stop, continue
+								continue
+							}
 
-  						walkStopIndex := GetOrCreateMapnificentStop(feeds, feedNr, walkStopDistance.Stop, network, stationMap)
-  						if walkStopIndex == stopIndex {
-  							continue
-  						}
-  						_, sameStopWalkedOk := sameStopWalked[walkStopIndex]
-  						if sameStopWalkedOk {
-  							continue
-  						}
-  						sameStopWalked[walkStopIndex] = true
-
-  						walkTravelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
-  						walkTravelOption.Stop = proto.Int32(int32(walkStopIndex))
-  						walkTravelOption.WalkDistance = proto.Int32(int32(walkStopDistance.Distance))
-  						mapnificentStop.TravelOptions = append(mapnificentStop.TravelOptions, walkTravelOption)
-  					}
-          }
+							walkStopIndex := GetOrCreateMapnificentStop(feeds, feedNr, walkStopDistance.Stop, network, stationMap, extraInfo)
+							if walkStopIndex == stopIndex {
+								continue
+							}
+							_, sameStopWalkedOk := sameStopWalked[walkStopIndex]
+							if sameStopWalkedOk {
+								continue
+							}
+							sameStopWalked[walkStopIndex] = true
+							if walkStopDistance.Distance <= WALK_STATION_RADIUS {
+								walkTravelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
+								walkTravelOption.Stop = proto.Int32(int32(walkStopIndex))
+								walkTravelOption.WalkDistance = proto.Int32(int32(walkStopDistance.Distance))
+								mapnificentStop.TravelOptions = append(mapnificentStop.TravelOptions, walkTravelOption)
+							}
+						}
+					}
 					stopWalked[stopIndex] = true
 				}
 
@@ -193,16 +197,12 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 					travelOption.Line = mapnificent_line.LineId
 					lastStop.TravelOptions = append(lastStop.TravelOptions, travelOption)
 				}
-				// log.Println("Travel options count", stopIndex, len(mapnificentStop.TravelOptions))
 				lastStopArrival = stoptime.ArrivalTime
 				lastStopDeparture = stoptime.DepartureTime
 				lastStop = mapnificentStop
 			}
 		}
 	}
-	// for i, stop := range network.Stops {
-	//   log.Println("check stops", i, len(stop.TravelOptions))
-	// }
 	return network
 }
 
@@ -534,17 +534,14 @@ func NewLineTime(wd int32, hour int32, interval int32) mapnificent.MapnificentNe
 func GetTripHash(trip *gtfs.Trip) string {
 	/* Gets a hash based on route and the actual trip stops */
 	h := md5.New()
-	// log.Println("Route", trip.Route.Id)
+	if trip.Route == nil {
+		log.Println("Missing Route on trip", trip.Id)
+	}
 	io.WriteString(h, trip.Route.Id)
 	io.WriteString(h, "||")
 	io.WriteString(h, trip.Headsign)
 	io.WriteString(h, "||")
 	io.WriteString(h, hex.EncodeToString([]byte{trip.Direction}))
-	// for _, stoptime := range trip.StopTimes {
-	// 	io.WriteString(h, stoptime.Stop.Id)
-	// 	io.WriteString(h, "||")
-	// 	// log.Println("Stop", stoptime.Stop.Id)
-	// }
 	return hex.EncodeToString(h.Sum(nil)[:])
 }
 
@@ -599,7 +596,7 @@ func main() {
 					if err != nil {
 						log.Fatal(err)
 					} else {
-            feed.RoutingOnly = true
+						feed.RoutingOnly = true
 						feed.Load()
 						feeds[path] = feed
 					}

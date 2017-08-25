@@ -245,7 +245,7 @@ func b2i(b bool) int32 {
 	return 0
 }
 
-func GetWeekdaysForTrip(feed *gtfs.Feed, serviceId string) (weekdays int32) {
+func GetWeekdaysForServiceId(feed *gtfs.Feed, serviceId string) (weekdays int32) {
 	weekdays = 0
 	if calendar, ok := feed.Calendars[serviceId]; ok {
 		weekdays = weekdays | (b2i(calendar.Monday) << 0)
@@ -276,6 +276,7 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 	// 48 Friday/Saturday
 	//
 
+	// These are the service ranges we are interested in
 	service_ranges := []int32{
 		1, 6, // Monday from 6
 		// 96, 9, // Weekend from 9
@@ -283,77 +284,134 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 	}
 
 	cache_weekdays := make(map[string]int32)
-	service_trips := make(map[int32]*list.List)
+	service_trips := make(map[int]*list.List)
 
-	// trip := trips.Front().Value.(*gtfs.Trip)
+	// Go through all service ranges and record associated trips
 	for i := 0; i < len(service_ranges); i += 2 {
 		service_day := service_ranges[i]
+		hour := service_ranges[i+1]
 
 		for trip := trips.Front(); trip != nil; trip = trip.Next() {
 			realTrip := trip.Value.(*gtfs.Trip)
 			weekdays, wd_ok := cache_weekdays[realTrip.ServiceId]
 			if !wd_ok {
-				weekdays = GetWeekdaysForTrip(feed, realTrip.ServiceId)
+				weekdays = GetWeekdaysForServiceId(feed, realTrip.ServiceId)
 				cache_weekdays[realTrip.ServiceId] = weekdays
 			}
 			if service_day&weekdays >= service_day {
-				_, ok := service_trips[service_day]
+				_, ok := service_trips[i]
 				if !ok {
-					service_trips[service_day] = list.New()
+					service_trips[i] = list.New()
 				}
-				service_trips[service_day].PushBack(realTrip)
+				service_trips[i].PushBack(realTrip)
 			}
 		}
-		st, ok := service_trips[service_day]
-		if ok {
-			log.Println("Found count for service day", st.Len(), service_day)
-		} else {
-			log.Println("Found count for service day 0", service_day)
+		st, ok := service_trips[i]
+		if !ok || st.Len() == 0 {
+			// This trip might be modelled via exceptions
+			// Find best serviceID in exceptions that provides
+			// services in service range
+			// This is a hack: we are trying to find regularities in
+			// exceptions.
+
+			layout := "20060102" // Time parsing layout, see go doc
+
+			serviceIdCount := make(map[string]int)
+			mostCommonId := ""
+			mostCommonIdCount := 0
+
+			for trip := trips.Front(); trip != nil; trip = trip.Next() {
+				realTrip := trip.Value.(*gtfs.Trip)
+
+				depTime := realTrip.StopTimes[0].DepartureTime
+				depHour := int32(depTime / (60 * 60))
+				// If departure time of is not within service hour range
+				if !(depHour >= hour && depHour <= (hour+HOUR_RANGE)) {
+					continue
+				}
+
+				_, sid_ok := serviceIdCount[realTrip.ServiceId]
+				if !sid_ok {
+					if calendardates, cd_ok := feed.CalendarDates[realTrip.ServiceId]; cd_ok {
+						for _, calendardate := range calendardates {
+							if calendardate.ExceptionType != 1 {
+								continue
+							}
+
+							strdate := strconv.Itoa(calendardate.Date)
+							t, err := time.Parse(layout, strdate)
+							if err != nil {
+								continue
+							}
+							wd := t.Weekday()
+							var weekdays int32 = 0
+							if wd == 0 {
+								weekdays = weekdays | (1 << 6)
+							} else {
+								weekdays = weekdays | (1 << (uint(wd) - 1))
+							}
+							if service_day&weekdays == 0 {
+								continue
+							}
+
+							count, count_ok := serviceIdCount[realTrip.ServiceId]
+							var lastCount int
+							if !count_ok {
+								serviceIdCount[realTrip.ServiceId] = 1
+								lastCount = 1
+							} else {
+								serviceIdCount[realTrip.ServiceId] = count + 1
+								lastCount = count + 1
+							}
+							if lastCount > mostCommonIdCount {
+								mostCommonIdCount = lastCount
+								mostCommonId = realTrip.ServiceId
+							}
+						}
+					}
+				}
+			}
+			if mostCommonIdCount != 0 {
+				for trip := trips.Front(); trip != nil; trip = trip.Next() {
+					realTrip := trip.Value.(*gtfs.Trip)
+					if realTrip.ServiceId != mostCommonId {
+						continue
+					}
+					depTime := realTrip.StopTimes[0].DepartureTime
+					depHour := int32(depTime / (60 * 60))
+					// If departure time of is not within service hour range
+					if !(depHour >= hour && depHour <= (hour+HOUR_RANGE)) {
+						continue
+					}
+					_, ok := service_trips[i]
+					if !ok {
+						service_trips[i] = list.New()
+					}
+					service_trips[i].PushBack(realTrip)
+				}
+			}
 		}
 	}
 
 	for i := 0; i < len(service_ranges); i += 2 {
 		wd := service_ranges[i]
 		hour := service_ranges[i+1]
-		tripList, ok := service_trips[wd]
+		tripList, ok := service_trips[i]
 
 		if !ok {
 			// Found no trips for this service id
 			continue
 		}
+		if tripList.Len() == 0 {
+			continue
+		}
 
 		if wd == 0 {
-			// Runs on no days (possibly only calendardates that we are ignording)
+			// Runs on no days
 			continue
 		}
 
 		frequencyCounter := 0
-		//
-		// for trip := tripList.Front(); trip != nil; trip = trip.Next() {
-		//
-		//   realTrip := trip.Value.(*gtfs.Trip)
-		//
-		//   if len(realTrip.Frequencies) > 0 {
-		//       frequencyCounter += 1
-		//       for _, freq := range realTrip.Frequencies {
-		//         start := math.Floor(float64(freq.StartTime) / float64(hour_range))
-		//         stop := math.Floor(float64(freq.EndTime) / float64(hour_range))
-		//         headway := round(float64(freq.HeadwaySecs) / 60.0)
-		//     		mapnificent_line_time = mapnificent.MapnificentNetwork_Line_LineTime{
-		// 					Interval: proto.Int32(int32(headway)),
-		// 					Start:    proto.Int32(int32(start)),
-		// 					Stop:     proto.Int32(int32(stop)),
-		// 					Weekday:  proto.Int32(int32(wd)),
-		// 				}
-		// 				line.LineTimes = append(line.LineTimes, &mapnificent_line_time)
-		//       }
-		//   }
-		// }
-		//
-		// if frequencyCounter == tripList.Len() {
-		//   // All trips here have frequencies, no point in calculating
-		//   continue
-		// }
 
 		depTimes := make([]int, tripList.Len())
 		depTimesCounter := 0
@@ -375,7 +433,8 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 
 			depTime := lastTrip.StopTimes[0].DepartureTime
 			depHour := int32(depTime / (60 * 60))
-			if depHour > hour && depHour <= (hour+HOUR_RANGE) {
+			// If departure time of is within service hour range
+			if depHour >= hour && depHour <= (hour+HOUR_RANGE) {
 				depTimes[depTimesCounter] = int(depTime)
 				depTimesCounter += 1
 			}
@@ -409,14 +468,7 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 			averageInterval = -1
 		}
 
-		log.Println("Calculated headway for day",
-			lastTrip.Route.ShortName, wd, hour, averageInterval/60.0)
-		if averageInterval < 0 {
-			log.Println("Details", len(depTimes))
-		}
-
 		if averageInterval > 0 {
-			// log.Println("Appending", wd, hour, averageInterval, "for", line.LineId)
 			mapnificent_line_time := NewLineTime(wd, hour, int32(averageInterval))
 			line.LineTimes = append(line.LineTimes, &mapnificent_line_time)
 		}

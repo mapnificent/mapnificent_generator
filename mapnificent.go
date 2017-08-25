@@ -22,6 +22,7 @@ var (
 	pathsString = flag.String("d", "", "Directories containing gtfs txt or zip files or zip file path (directories are traversed, multi coma separated: \"/here,/there\")")
 	outputFile  = flag.String("o", "", "Output file")
 	shouldLog   = flag.Bool("v", false, "Log to Stdout/err")
+	extraInfo   = flag.Bool("e", false, "Add extra info to output")
 	needHelp    = flag.Bool("h", false, "Displays this help message...")
 	feeds       map[string]*gtfs.Feed
 )
@@ -94,7 +95,7 @@ func discoverGtfsPaths(path string) (results []string) {
 	return
 }
 
-func GetNetwork(feeds map[string]*gtfs.Feed) *mapnificent.MapnificentNetwork {
+func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.MapnificentNetwork {
 
 	network := new(mapnificent.MapnificentNetwork)
 
@@ -129,23 +130,26 @@ func GetNetwork(feeds map[string]*gtfs.Feed) *mapnificent.MapnificentNetwork {
 
 			trip := li.Front().Value.(*gtfs.Trip)
 
-			mapnificent_line := mapnificent.MapnificentNetwork_Line{
+			mapnificent_line := &mapnificent.MapnificentNetwork_Line{
 				LineId: proto.String(trip.Id + "|" + trip.Route.Id),
 			}
-
-			GetFrequencies(feed, li, &mapnificent_line)
+			if extraInfo {
+				routeName := GetRouteNamesFromTrips(li)
+				mapnificent_line.Name = &routeName
+			}
+			GetFrequencies(feed, li, mapnificent_line)
 
 			if len(mapnificent_line.LineTimes) == 0 {
 				continue
 			}
 
-			network.Lines = append(network.Lines, &mapnificent_line)
+			network.Lines = append(network.Lines, mapnificent_line)
 
 			var lastStopArrival, lastStopDeparture uint
 			var lastStop *mapnificent.MapnificentNetwork_Stop
 
 			for _, stoptime := range trip.StopTimes {
-				stopIndex := GetOrCreateMapnificentStop(feeds, feedNr, stoptime.Stop, network, stationMap)
+				stopIndex := GetOrCreateMapnificentStop(feeds, feedNr, stoptime.Stop, network, stationMap, extraInfo)
 				mapnificentStop := network.Stops[stopIndex]
 
 				_, walkedOk := stopWalked[stopIndex]
@@ -204,34 +208,44 @@ func GetNetwork(feeds map[string]*gtfs.Feed) *mapnificent.MapnificentNetwork {
 
 func GetOrCreateMapnificentStop(feeds map[string]*gtfs.Feed, feedNr int, stop *gtfs.Stop,
 	network *mapnificent.MapnificentNetwork,
-	stationMap map[string]uint) uint {
+	stationMap map[string]uint,
+	extraInfo bool) uint {
 	stationName := fmt.Sprintf("%d_%s", feedNr, stop.Id)
 	stopIndex, ok := stationMap[stationName]
 	if !ok {
 		// Consider all stops in 50 meter radius as identical
 		foundStopIndex := -1
-    for _, feed := range feeds {
-  		nearbyStops := feed.StopCollection.StopsByProximity(stop.Lat, stop.Lon, IDENTICAL_STATION_RADIUS)
-  		for _, nearbyStop := range nearbyStops {
-  			nearbyStopnName := fmt.Sprintf("%d_%s", feedNr, nearbyStop.Id)
-  			nearbystopIndex, ok := stationMap[nearbyStopnName]
-  			if ok {
-  				foundStopIndex = int(nearbystopIndex)
-  				break
-  			}
-      }
-      if foundStopIndex != -1 {
-        break
-      }
+		for _, feed := range feeds {
+			nearbyStops := feed.StopCollection.StopsByProximity(stop.Lat, stop.Lon, IDENTICAL_STATION_RADIUS)
+			for _, nearbyStop := range nearbyStops {
+				nearbyStopnName := fmt.Sprintf("%d_%s", feedNr, nearbyStop.Id)
+				nearbystopIndex, ok := stationMap[nearbyStopnName]
+				if ok {
+					foundStopIndex = int(nearbystopIndex)
+					break
+				}
+			}
+			if foundStopIndex != -1 {
+				break
+			}
 		}
 		if foundStopIndex == -1 {
-			mapnificentStop := new(mapnificent.MapnificentNetwork_Stop)
+			mapnificentStop := &mapnificent.MapnificentNetwork_Stop{}
 			mapnificentStop.Latitude = proto.Float64(stop.Lat)
 			mapnificentStop.Longitude = proto.Float64(stop.Lon)
+			if extraInfo {
+				stopName := stop.Name + " (" + stop.Id + ")"
+				mapnificentStop.Name = &stopName
+			}
 			network.Stops = append(network.Stops, mapnificentStop)
 			stopIndex = uint(len(network.Stops) - 1)
 		} else {
 			stopIndex = uint(foundStopIndex)
+			if extraInfo {
+				mapnificentStopName := network.Stops[stopIndex].GetName()
+				mapnificentStopName = mapnificentStopName + " | " + stop.Name + " (" + stop.Id + ")"
+				network.Stops[stopIndex].Name = &mapnificentStopName
+			}
 		}
 		stationMap[stationName] = stopIndex
 	}
@@ -475,6 +489,39 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 	}
 }
 
+func GetRouteNamesFromTrips(trips *list.List) string {
+	var buffer bytes.Buffer
+	nameUsed := make(map[string]bool)
+
+	i := 0
+	for trip := trips.Front(); trip != nil; trip = trip.Next() {
+		realTrip := trip.Value.(*gtfs.Trip)
+		route := realTrip.Route
+		_, ok := nameUsed[realTrip.Route.Id]
+		if !ok {
+			if i > 0 {
+				buffer.WriteString(" | ")
+			}
+			if route.LongName != "" {
+				buffer.WriteString(route.LongName)
+			} else {
+				buffer.WriteString(route.ShortName)
+			}
+			buffer.WriteString(" (")
+			if route.LongName != "" {
+				buffer.WriteString(route.ShortName)
+				buffer.WriteString(",")
+			}
+			buffer.WriteString(route.Id)
+			buffer.WriteString(")")
+			nameUsed[route.Id] = true
+			i += 1
+		}
+	}
+
+	return buffer.String()
+}
+
 func NewLineTime(wd int32, hour int32, interval int32) mapnificent.MapnificentNetwork_Line_LineTime {
 	return mapnificent.MapnificentNetwork_Line_LineTime{
 		Interval: proto.Int32(interval),
@@ -577,7 +624,7 @@ func main() {
 		return
 	}
 	log.Println("Getting Network")
-	network := GetNetwork(feeds)
+	network := GetNetwork(feeds, *extraInfo)
 
 	log.Println("Marshalling...")
 	bytes, err := proto.Marshal(network)

@@ -336,7 +336,9 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 
 			for trip := trips.Front(); trip != nil; trip = trip.Next() {
 				realTrip := trip.Value.(*gtfs.Trip)
-
+				if len(realTrip.StopTimes) == 0 {
+					continue
+				}
 				depTime := realTrip.StopTimes[0].DepartureTime
 				depHour := int32(depTime / (60 * 60))
 				// If departure time of is not within service hour range
@@ -389,6 +391,9 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 				for trip := trips.Front(); trip != nil; trip = trip.Next() {
 					realTrip := trip.Value.(*gtfs.Trip)
 					if realTrip.ServiceId != mostCommonId {
+						continue
+					}
+					if len(realTrip.StopTimes) == 0 {
 						continue
 					}
 					depTime := realTrip.StopTimes[0].DepartureTime

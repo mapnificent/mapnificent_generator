@@ -99,7 +99,7 @@ def main(path):
     data_path = os.path.join(path, 'data')
     mkdir_p(data_path)
 
-    now = datetime.now()
+    now = datetime.utcnow()
     age = timedelta(days=7)
 
     new_files = False

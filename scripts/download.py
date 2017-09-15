@@ -173,6 +173,8 @@ def main(path):
         if 'added' not in data:
             data['added'] = now.isoformat()
         data['changed'] = now.isoformat()
+        data['version'] = data.get('version', 0) + 1
+
         yaml_part = ydump(data).decode('utf-8')
         with open(filename) as f:
             contents = f.read()

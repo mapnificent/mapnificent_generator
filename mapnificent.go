@@ -430,10 +430,12 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 			continue
 		}
 
-		frequencyCounter := 0
+		var frequencyCounter uint = 0
+		var frequencyHeadwaySum uint = 0
 
+		var depTimesCounter uint = 0
 		depTimes := make([]int, tripList.Len())
-		depTimesCounter := 0
+
 
 		var lastTrip *gtfs.Trip
 
@@ -442,7 +444,14 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 			lastTrip = trip.Value.(*gtfs.Trip)
 
 			if len(lastTrip.Frequencies) > 0 {
-				frequencyCounter += 1
+				for _, freq := range lastTrip.Frequencies {
+					startTime := int32(freq.StartTime / (60 * 60))
+					endTime := int32(freq.EndTime / (60 * 60))
+					if endTime >= hour && startTime <= (hour+HOUR_RANGE) {
+						frequencyHeadwaySum += freq.HeadwaySecs
+						frequencyCounter += 1
+					}
+				}
 				continue
 			}
 
@@ -458,7 +467,13 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 				depTimesCounter += 1
 			}
 		}
-
+		if frequencyCounter > depTimesCounter {
+			// Add line frequency based on average from Frequency table
+			averageFrequency := frequencyHeadwaySum / frequencyCounter
+			mapnificent_line_time := NewLineTime(wd, hour, int32(averageFrequency))
+			line.LineTimes = append(line.LineTimes, &mapnificent_line_time)
+			continue
+		}
 		if depTimesCounter == 0 {
 			continue
 		}

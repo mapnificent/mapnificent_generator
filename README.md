@@ -9,7 +9,11 @@ This repo contains a Beta version of the Mapnificent Generator in Go. It takes G
 ## Download and update Mapnificent City automatically
 
 	export TRANSITFEED_API_KEY=<Your transitfeeds.com API Key>
-	scripts/download.py <path to mapnificent cities folder containing markdown file>
+	python -m scripts.download <path to mapnificent city directory containing markdown file>
+
+## Create a new city
+
+	python -m scripts.create <path to mapnificent cities directory with all cities>
 
 
 ## Development tasks

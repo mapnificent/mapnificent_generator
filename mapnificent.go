@@ -121,6 +121,9 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 		lineMap := make(map[string]*list.List)
 
 		for _, trip := range feed.Trips {
+			if trip.Route == nil {
+				continue
+			}
 			tripHash := GetTripHash(trip)
 			_, ok := lineMap[tripHash]
 			if !ok {

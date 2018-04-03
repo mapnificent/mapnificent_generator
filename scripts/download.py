@@ -123,7 +123,8 @@ def main(path):
             url = info['url']
             response_content, final_url = download_url(url)
 
-        if final_url is not None:
+        if final_url is not None and not info.get('url'):
+            # Keep permalinks that redirect
             info['url'] = final_url
 
         hashsum = hashlib.sha256()

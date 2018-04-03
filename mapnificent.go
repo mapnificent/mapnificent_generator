@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	mapnificent "./mapnificent.pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/mapnificent/gogtfs"
+	"github.com/mapnificent/mapnificent_generator/mapnificent.pb"
 )
 
 var (
@@ -114,7 +114,7 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 		if name == "" {
 			name = getNameFromPath(path)
 			// Store first feed path as name
-			network.Cityid = proto.String(name)
+			network.Cityid = name
 		}
 
 		lineMap := make(map[string]*list.List)
@@ -136,11 +136,11 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 			trip := li.Front().Value.(*gtfs.Trip)
 
 			mapnificent_line := &mapnificent.MapnificentNetwork_Line{
-				LineId: proto.String(trip.Id + "|" + trip.Route.Id),
+				LineId: trip.Id + "|" + trip.Route.Id,
 			}
 			if extraInfo {
 				routeName := GetRouteNamesFromTrips(li)
-				mapnificent_line.Name = &routeName
+				mapnificent_line.Name = routeName
 			}
 			GetFrequencies(feed, li, mapnificent_line)
 
@@ -183,8 +183,8 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 							}
 							sameStopWalked[walkStopIndex] = true
 							walkTravelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
-							walkTravelOption.Stop = proto.Int32(int32(walkStopIndex))
-							walkTravelOption.WalkDistance = proto.Int32(int32(walkStopDistance.Distance))
+							walkTravelOption.Stop = int32(walkStopIndex)
+							walkTravelOption.WalkDistance = int32(walkStopDistance.Distance)
 							mapnificentStop.TravelOptions = append(mapnificentStop.TravelOptions, walkTravelOption)
 						}
 					}
@@ -195,9 +195,9 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 					delta := stoptime.ArrivalTime - lastStopDeparture
 					stayDelta := lastStopDeparture - lastStopArrival
 					travelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
-					travelOption.Stop = proto.Int32(int32(stopIndex))
-					travelOption.TravelTime = proto.Int32(int32(delta))
-					travelOption.StayTime = proto.Int32(int32(stayDelta))
+					travelOption.Stop = int32(stopIndex)
+					travelOption.TravelTime = int32(delta)
+					travelOption.StayTime = int32(stayDelta)
 					travelOption.Line = mapnificent_line.LineId
 					lastStop.TravelOptions = append(lastStop.TravelOptions, travelOption)
 				}
@@ -244,11 +244,11 @@ func GetOrCreateMapnificentStop(feeds map[string]*gtfs.Feed, path string, stop *
 		}
 		if foundStopIndex == -1 {
 			mapnificentStop := &mapnificent.MapnificentNetwork_Stop{}
-			mapnificentStop.Latitude = proto.Float64(stop.Lat)
-			mapnificentStop.Longitude = proto.Float64(stop.Lon)
+			mapnificentStop.Latitude = stop.Lat
+			mapnificentStop.Longitude = stop.Lon
 			if extraInfo {
 				stopName := stop.Name + " (" + stop.Id + ")"
-				mapnificentStop.Name = &stopName
+				mapnificentStop.Name = stopName
 			}
 			network.Stops = append(network.Stops, mapnificentStop)
 			stopIndex = uint(len(network.Stops) - 1)
@@ -257,7 +257,7 @@ func GetOrCreateMapnificentStop(feeds map[string]*gtfs.Feed, path string, stop *
 			if extraInfo {
 				mapnificentStopName := network.Stops[stopIndex].GetName()
 				mapnificentStopName = mapnificentStopName + " | " + stop.Name + " (" + stop.Id + ")"
-				network.Stops[stopIndex].Name = &mapnificentStopName
+				network.Stops[stopIndex].Name = mapnificentStopName
 			}
 		}
 		stationMap[stationName] = stopIndex
@@ -556,10 +556,10 @@ func GetRouteNamesFromTrips(trips *list.List) string {
 
 func NewLineTime(wd int32, hour int32, interval int32) mapnificent.MapnificentNetwork_Line_LineTime {
 	return mapnificent.MapnificentNetwork_Line_LineTime{
-		Interval: proto.Int32(interval),
-		Start:    proto.Int32(hour),
-		Stop:     proto.Int32(hour + HOUR_RANGE),
-		Weekday:  proto.Int32(wd),
+		Interval: interval,
+		Start:    hour,
+		Stop:     hour + HOUR_RANGE,
+		Weekday:  wd,
 	}
 }
 

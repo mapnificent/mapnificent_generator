@@ -7,7 +7,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "working dir $DIR"
 
 arch=$(go env GOARCH)
-version='0.0.2'
+version='0.0.3'
 goversion=$(go version | awk '{print $3}')
 
 for os in linux darwin; do

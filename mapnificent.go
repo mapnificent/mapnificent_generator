@@ -103,11 +103,11 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 	network := new(mapnificent.MapnificentNetwork)
 
 	var name string
-	feedNr := 0
+
+	stationMap := make(map[string]uint)
 
 	for path, feed := range feeds {
-
-		feedNr += 1
+		log.Println("GetNetwork loop", path)
 
 		stopWalked := make(map[uint]bool)
 
@@ -155,7 +155,7 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 			var lastStop *mapnificent.MapnificentNetwork_Stop
 
 			for _, stoptime := range trip.StopTimes {
-				stopIndex := GetOrCreateMapnificentStop(feeds, feedNr, stoptime.Stop, network, stationMap, extraInfo)
+				stopIndex := GetOrCreateMapnificentStop(feeds, path, stoptime.Stop, network, stationMap, extraInfo)
 				mapnificentStop := network.Stops[stopIndex]
 
 				_, walkedOk := stopWalked[stopIndex]
@@ -170,7 +170,7 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 								continue
 							}
 
-							walkStopIndex := GetOrCreateMapnificentStop(feeds, feedNr, walkStopDistance.Stop, network, stationMap, extraInfo)
+							walkStopIndex := GetOrCreateMapnificentStop(feeds, path, walkStopDistance.Stop, network, stationMap, extraInfo)
 							if walkStopIndex == stopIndex {
 								continue
 							}
@@ -209,16 +209,16 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 	return network
 }
 
-func GetOrCreateMapnificentStop(feeds map[string]*gtfs.Feed, feedNr int, stop *gtfs.Stop,
+func GetOrCreateMapnificentStop(feeds map[string]*gtfs.Feed, path string, stop *gtfs.Stop,
 	network *mapnificent.MapnificentNetwork,
 	stationMap map[string]uint,
 	extraInfo bool) uint {
-	stationName := fmt.Sprintf("%d_%s", feedNr, stop.Id)
+	stationName := fmt.Sprintf("%s_%s", path, stop.Id)
 	stopIndex, ok := stationMap[stationName]
 	if !ok {
 		// Consider all stops in IDENTICAL_STATION_RADIUS meter radius as identical
 		foundStopIndex := -1
-		for _, feed := range feeds {
+		for localPath, feed := range feeds {
 			nearbyStopDistances := feed.StopCollection.StopDistancesByProximity(stop.Lat, stop.Lon, IDENTICAL_STATION_RADIUS)
 			for _, nearbyStopDistance := range nearbyStopDistances {
 				nearbyStop := nearbyStopDistance.Stop
@@ -226,7 +226,11 @@ func GetOrCreateMapnificentStop(feeds map[string]*gtfs.Feed, feedNr int, stop *g
 				if nearbyDistance > IDENTICAL_STATION_RADIUS {
 					continue
 				}
-				nearbyStopName := fmt.Sprintf("%d_%s", feedNr, nearbyStop.Id)
+				nearbyStopName := fmt.Sprintf("%s_%s", localPath, nearbyStop.Id)
+				if nearbyStopName == stationName {
+					// same stop
+					continue
+				}
 				nearbystopIndex, ok := stationMap[nearbyStopName]
 				if ok {
 					foundStopIndex = int(nearbystopIndex)

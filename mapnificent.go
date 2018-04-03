@@ -117,7 +117,6 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 			network.Cityid = proto.String(name)
 		}
 
-		stationMap := make(map[string]uint)
 		lineMap := make(map[string]*list.List)
 
 		for _, trip := range feed.Trips {
@@ -165,12 +164,16 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 						walkStopDistances := walkFeed.StopCollection.StopDistancesByProximity(stoptime.Stop.Lat, stoptime.Stop.Lon, WALK_STATION_RADIUS)
 						sameStopWalked := make(map[uint]bool)
 						for _, walkStopDistance := range walkStopDistances {
+							if walkStopDistance.Distance > WALK_STATION_RADIUS {
+								continue
+							}
+
 							if walkFeedPath == path && walkStopDistance.Stop.Id == stoptime.Stop.Id {
 								// Same stop, continue
 								continue
 							}
 
-							walkStopIndex := GetOrCreateMapnificentStop(feeds, path, walkStopDistance.Stop, network, stationMap, extraInfo)
+							walkStopIndex := GetOrCreateMapnificentStop(feeds, walkFeedPath, walkStopDistance.Stop, network, stationMap, extraInfo)
 							if walkStopIndex == stopIndex {
 								continue
 							}
@@ -179,12 +182,10 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 								continue
 							}
 							sameStopWalked[walkStopIndex] = true
-							if walkStopDistance.Distance <= WALK_STATION_RADIUS {
-								walkTravelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
-								walkTravelOption.Stop = proto.Int32(int32(walkStopIndex))
-								walkTravelOption.WalkDistance = proto.Int32(int32(walkStopDistance.Distance))
-								mapnificentStop.TravelOptions = append(mapnificentStop.TravelOptions, walkTravelOption)
-							}
+							walkTravelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
+							walkTravelOption.Stop = proto.Int32(int32(walkStopIndex))
+							walkTravelOption.WalkDistance = proto.Int32(int32(walkStopDistance.Distance))
+							mapnificentStop.TravelOptions = append(mapnificentStop.TravelOptions, walkTravelOption)
 						}
 					}
 					stopWalked[stopIndex] = true

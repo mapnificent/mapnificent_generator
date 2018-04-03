@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
+	mapnificent "./mapnificent.pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/mapnificent/gogtfs"
-	"github.com/mapnificent/mapnificent_generator/mapnificent.pb"
 )
 
 var (
@@ -435,7 +435,6 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 
 		var depTimesCounter uint = 0
 		depTimes := make([]int, tripList.Len())
-
 
 		var lastTrip *gtfs.Trip
 

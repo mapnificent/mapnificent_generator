@@ -6,23 +6,29 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "working dir $DIR"
 
-arch=$(go env GOARCH)
 version='0.0.3'
-goversion=$(go version | awk '{print $3}')
+go_arch=$(go env GOARCH)
+go_os=$(go env GOOS)
+go_version=$(go version | awk '{print $3}')
 
+echo "[INFO] Starting $(basename "${0}") v${version}"
 for os in linux darwin; do
-    echo "... building v$version for $os/$arch"
-    BUILD=$(mktemp -d -t mapnificent_generator)
-    TARGET="mapnificent_generator-$version.$os-$arch.$goversion"
-    GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build
+    echo "[INFO]   building for $os/$go_arch"
+    BUILD="$(mktemp -d -t mapnificent_generator_XXXXXX)"
+    TARGET="mapnificent_generator-$version.$os-$go_arch.$go_version"
+    GOOS=$os GOARCH=$go_arch CGO_ENABLED=0 go build -o $BUILD/$TARGET/mapnificent_generator
     mkdir -p $BUILD/$TARGET
-    cp mapnificent_generator $BUILD/$TARGET/mapnificent_generator
-    pushd $BUILD >/dev/null
-    tar czvf $TARGET.tar.gz $TARGET
-    if [ -e $DIR/dist/$TARGET.tar.gz ]; then
-        echo "... WARNING overwriting dist/$TARGET.tar.gz"
+    if [ "$os" = "$go_os" ]; then
+    	echo "[INFO]     copying mapnificent_generator for $os/$go_arch"
+        cp $BUILD/$TARGET/mapnificent_generator mapnificent_generator
     fi
+    pushd $BUILD >/dev/null
+    tar czf $TARGET.tar.gz $TARGET >/dev/null
+    if [ -e "$DIR/dist/$TARGET.tar.gz" ]; then
+        echo "[WARN]     overwriting dist/$TARGET.tar.gz"
+    fi
+    mkdir -p "${DIR}/dist"
     mv $TARGET.tar.gz $DIR/dist
-    echo "... built dist/$TARGET.tar.gz"
+    echo "[INFO]     built dist/$TARGET.tar.gz"
     popd >/dev/null
 done

@@ -6,7 +6,7 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "working dir $DIR"
 
-version='0.0.3'
+version='0.0.4'
 go_arch=$(go env GOARCH)
 go_os=$(go env GOOS)
 go_version=$(go version | awk '{print $3}')

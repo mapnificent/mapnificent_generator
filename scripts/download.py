@@ -32,10 +32,13 @@ def get_transitfeeds_locations(location_ids):
 
 
 def download_transitfeeds_feed(feed_id):
-    return download_url(TRANSITFEEDS_API_URL + 'getLatestFeedVersion', params={
-        'key': os.environ.get('TRANSITFEED_API_KEY'),
-        'feed': feed_id
-    })
+    try:
+        return download_url(TRANSITFEEDS_API_URL + 'getLatestFeedVersion', params={
+            'key': os.environ.get('TRANSITFEED_API_KEY'),
+            'feed': feed_id
+        })
+    except ValueError:
+        return None, None
 
 
 def download_with_script(script, basepath):
@@ -53,6 +56,8 @@ def download_with_script(script, basepath):
 def download_url(url, params=None):
     response_content = BytesIO()
     with closing(requests.get(url, params=params, stream=True)) as response:
+        if response.headers.get('Content-Type') == 'application/json':
+            raise ValueError('API error')
         size = None
         if response.headers.get('Content-Length'):
             size = int(response.headers.get('Content-Length').strip())
@@ -119,9 +124,16 @@ def main(path):
             response_content, final_url = download_with_script(info['script'], basepath)
         elif info.get('tf_feed_id') is not None:
             response_content, final_url = download_transitfeeds_feed(info['tf_feed_id'])
-        else:
+        elif info.get('url'):
             url = info['url']
             response_content, final_url = download_url(url)
+        else:
+            print(f'Cannot update {key}, skipping...')
+            continue
+
+        if response_content is None:
+            print(f'Update {key} failed, skipping...')
+            continue
 
         if final_url is not None and not info.get('url'):
             # Keep permalinks that redirect
@@ -130,7 +142,7 @@ def main(path):
         hashsum = hashlib.sha256()
         hashsum.update(response_content.getvalue())
         hexsum = hashsum.hexdigest()
-        if current_hash_sum != hexsum:
+        if current_hash_sum != hexsum or not os.path.exists(data_file_path):
             print(hexsum)
             info['sha256'] = hexsum
             new_files = True

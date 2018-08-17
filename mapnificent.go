@@ -183,8 +183,8 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 							}
 							sameStopWalked[walkStopIndex] = true
 							walkTravelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
-							walkTravelOption.Stop = int32(walkStopIndex)
-							walkTravelOption.WalkDistance = int32(walkStopDistance.Distance)
+							walkTravelOption.Stop = uint32(walkStopIndex)
+							walkTravelOption.WalkDistance = uint32(walkStopDistance.Distance)
 							mapnificentStop.TravelOptions = append(mapnificentStop.TravelOptions, walkTravelOption)
 						}
 					}
@@ -195,9 +195,9 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 					delta := stoptime.ArrivalTime - lastStopDeparture
 					stayDelta := lastStopDeparture - lastStopArrival
 					travelOption := new(mapnificent.MapnificentNetwork_Stop_TravelOption)
-					travelOption.Stop = int32(stopIndex)
-					travelOption.TravelTime = int32(delta)
-					travelOption.StayTime = int32(stayDelta)
+					travelOption.Stop = uint32(stopIndex)
+					travelOption.TravelTime = uint32(delta)
+					travelOption.StayTime = uint32(stayDelta)
 					travelOption.Line = mapnificent_line.LineId
 					lastStop.TravelOptions = append(lastStop.TravelOptions, travelOption)
 				}
@@ -482,7 +482,7 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 		if frequencyCounter > depTimesCounter {
 			// Add line frequency based on average from Frequency table
 			averageFrequency := frequencyHeadwaySum / frequencyCounter
-			mapnificent_line_time := NewLineTime(wd, hour, int32(averageFrequency))
+			mapnificent_line_time := NewLineTime(wd, hour, uint32(averageFrequency))
 			line.LineTimes = append(line.LineTimes, &mapnificent_line_time)
 			continue
 		}
@@ -515,7 +515,7 @@ func GetFrequencies(feed *gtfs.Feed, trips *list.List, line *mapnificent.Mapnifi
 		}
 
 		if averageInterval > 0 {
-			mapnificent_line_time := NewLineTime(wd, hour, int32(averageInterval))
+			mapnificent_line_time := NewLineTime(wd, hour, uint32(averageInterval))
 			line.LineTimes = append(line.LineTimes, &mapnificent_line_time)
 		}
 	}
@@ -554,12 +554,12 @@ func GetRouteNamesFromTrips(trips *list.List) string {
 	return buffer.String()
 }
 
-func NewLineTime(wd int32, hour int32, interval int32) mapnificent.MapnificentNetwork_Line_LineTime {
+func NewLineTime(wd int32, hour int32, interval uint32) mapnificent.MapnificentNetwork_Line_LineTime {
 	return mapnificent.MapnificentNetwork_Line_LineTime{
 		Interval: interval,
-		Start:    hour,
-		Stop:     hour + HOUR_RANGE,
-		Weekday:  wd,
+		Start:    uint32(hour),
+		Stop:     uint32(hour + HOUR_RANGE),
+		Weekday:  uint32(wd),
 	}
 }
 

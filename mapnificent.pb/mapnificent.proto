@@ -10,11 +10,11 @@ message MapnificentNetwork {
     double Longitude = 2;
 
     message TravelOption {
-      int32 Stop = 1;
-      int32 TravelTime = 2;
-      int32 StayTime = 3;
+      uint32 Stop = 1;
+      uint32 TravelTime = 2;
+      uint32 StayTime = 3;
       string Line = 4;
-      int32 WalkDistance = 5;
+      uint32 WalkDistance = 5;
     }
     repeated TravelOption TravelOptions = 3;
     string Name = 4;
@@ -24,10 +24,10 @@ message MapnificentNetwork {
   message Line {
     string LineId = 1;
     message LineTime {
-      int32 Interval = 1;
-      int32 Start = 2;
-      int32 Stop = 3;
-      int32 Weekday = 4;
+      uint32 Interval = 1;
+      uint32 Start = 2;
+      uint32 Stop = 3;
+      uint32 Weekday = 4;
     }
     repeated LineTime LineTimes = 2;
     string Name = 3;

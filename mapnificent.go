@@ -571,7 +571,7 @@ func GetTripHash(trip *gtfs.Trip) string {
 	}
 	io.WriteString(h, trip.Route.Id)
 	io.WriteString(h, "||")
-	if !trip.HasDirection || trip.Headsign == "" {
+	if !trip.HasDirection && trip.Headsign == "" {
 		for _, stoptime := range trip.StopTimes {
 			io.WriteString(h, stoptime.Stop.Id)
 			io.WriteString(h, "||")

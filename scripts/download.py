@@ -106,6 +106,7 @@ def main(path):
         print('No GTFS feeds present', filename)
 
     for key in gtfs.keys():
+        print('Checking', key)
         info = gtfs[key]
         if isinstance(info, str):
             gtfs[key] = {'url': info}
@@ -127,6 +128,10 @@ def main(path):
         elif info.get('url'):
             url = info['url']
             response_content, final_url = download_url(url)
+        elif info.get('file'):
+            final_url = None
+            with open(data_file_path, 'rb') as f:
+                response_content = BytesIO(f.read())
         else:
             print(f'Cannot update {key}, skipping...')
             continue

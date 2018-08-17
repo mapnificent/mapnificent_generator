@@ -179,6 +179,15 @@ def main(path):
 
     outpath = os.path.join(basepath, f'{cityid}.bin')
 
+    if data.get('script') is not None:
+        print('Applying post download script')
+        subprocess.run(
+            [data['script']],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            cwd=basepath
+        )
+
     if new_files or not os.path.exists(outpath):
         print('Calling mapnificent generator')
         subprocess.run(["./mapnificent_generator", "-d", data_path,

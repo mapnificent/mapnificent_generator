@@ -118,6 +118,7 @@ func GetNetwork(feeds map[string]*gtfs.Feed, extraInfo bool) *mapnificent.Mapnif
 		}
 
 		lineMap := make(map[string]*list.List)
+		log.Println("Found", len(feed.Trips), "for", name)
 
 		for _, trip := range feed.Trips {
 			if trip.Route == nil {
@@ -639,6 +640,7 @@ func main() {
 						feed.Load()
 						feeds[path] = feed
 					}
+					log.Println("Found stop times", feed.StopTimesCount)
 					totalStopTimes = totalStopTimes + feed.StopTimesCount
 					channel <- true
 				}(path, channel)
